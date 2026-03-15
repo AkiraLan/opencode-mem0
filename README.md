@@ -4,7 +4,8 @@
 
 **Persistent memory for OpenCode agents** using [Mem0 Platform API](https://docs.mem0.ai/api-reference).
 
-A fork of [opencode-supermemory](https://github.com/supermemoryai/opencode-supermemory), adapted to work with Mem0's hosted memory API.
+Forked from [happycastle114/opencode-openmemory](https://github.com/happycastle114/opencode-openmemory),
+which was originally adapted from [opencode-supermemory](https://github.com/supermemoryai/opencode-supermemory).
 
 ## Features
 
