@@ -298,7 +298,7 @@ export class Mem0RESTClient implements IMemoryBackendClient {
               sector: options?.tags?.[0],
               scope: scope.projectId ? "project" : "user",
               project_id: scope.projectId,
-              source: "opencode-openmemory",
+              source: "opencode-mem0",
             },
           })
         ),

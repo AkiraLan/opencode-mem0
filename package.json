@@ -1,12 +1,12 @@
 {
-  "name": "@happycastle/opencode-openmemory",
+  "name": "@happycastle/opencode-mem0",
   "version": "0.0.3",
   "description": "OpenCode plugin that gives coding agents persistent memory using Mem0",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "opencode-openmemory": "./dist/cli.js"
+    "opencode-mem0": "./dist/cli.js"
   },
   "scripts": {
     "build": "bun build ./src/index.ts --outdir ./dist --target node && bun build ./src/cli.ts --outfile ./dist/cli.js --target node && tsc --emitDeclarationOnly",
@@ -28,12 +28,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/happycastle114/opencode-openmemory"
+    "url": "https://github.com/happycastle114/opencode-mem0"
   },
   "bugs": {
-    "url": "https://github.com/happycastle114/opencode-openmemory/issues"
+    "url": "https://github.com/happycastle114/opencode-mem0/issues"
   },
-  "homepage": "https://github.com/happycastle114/opencode-openmemory#readme",
+  "homepage": "https://github.com/happycastle114/opencode-mem0#readme",
   "publishConfig": {
     "access": "public"
   },

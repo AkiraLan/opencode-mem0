@@ -1,4 +1,4 @@
-# opencode-openmemory
+# opencode-mem0
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -52,14 +52,14 @@ You can then use it in either of these ways:
 Run OpenCode with the built plugin directly:
 
 ```bash
-opencode --plugin /absolute/path/to/opencode-openmemory/dist/index.js
+opencode --plugin /absolute/path/to/opencode-mem0/dist/index.js
 ```
 
 Or register the built file in `~/.config/opencode/opencode.jsonc` for persistent use:
 
 ```jsonc
 {
-  "plugin": ["/absolute/path/to/opencode-openmemory/dist/index.js"]
+  "plugin": ["/absolute/path/to/opencode-mem0/dist/index.js"]
 }
 ```
 
@@ -218,8 +218,8 @@ Add to `~/.config/opencode/oh-my-opencode.json`:
 
 ```bash
 # Clone
-git clone https://github.com/happycastle114/opencode-openmemory.git
-cd opencode-openmemory
+git clone https://github.com/happycastle114/opencode-mem0.git
+cd opencode-mem0
 
 # Install dependencies
 bun install
@@ -239,7 +239,7 @@ bun run build && opencode --plugin ./dist/index.js
 
 ## Comparison with opencode-supermemory
 
-| Feature | opencode-supermemory | opencode-openmemory |
+| Feature | opencode-supermemory | opencode-mem0 |
 |---------|---------------------|-------------------------------------|
 | Backend | Supermemory Cloud | Mem0 Platform API |
 | Data Location | Cloud | Mem0 workspace |

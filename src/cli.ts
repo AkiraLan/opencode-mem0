@@ -11,8 +11,8 @@ const OH_MY_OPENCODE_CONFIG = join(OPENCODE_CONFIG_DIR, "oh-my-opencode.json");
 const CLI_DIR = dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ENTRY = join(CLI_DIR, "index.js");
 const LEGACY_PLUGIN_ENTRIES = [
-  "opencode-openmemory@latest",
-  "@happycastle/opencode-openmemory@latest",
+  "opencode-mem0@latest",
+  "@happycastle/opencode-mem0@latest",
 ];
 
 const OPENMEMORY_INIT_COMMAND = `# Initializing OpenMemory
@@ -461,7 +461,7 @@ interface InstallOptions {
 }
 
 async function install(options: InstallOptions): Promise<number> {
-  console.log("\n🧠 opencode-openmemory installer\n");
+  console.log("\n🧠 opencode-mem0 installer\n");
 
   const rl = options.tui ? createReadline() : null;
   let hasErrors = false;
@@ -580,7 +580,7 @@ async function install(options: InstallOptions): Promise<number> {
 
 function printHelp(): void {
   console.log(`
-opencode-openmemory - Persistent memory for OpenCode agents using Mem0
+opencode-mem0 - Persistent memory for OpenCode agents using Mem0
 
 Commands:
   install                    Install and configure the plugin
