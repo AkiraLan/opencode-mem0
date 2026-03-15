@@ -27,7 +27,7 @@ interface OpenMemoryConfig {
   
   injectProfile?: boolean;
   scopePrefix?: string;
-  defaultSector?: string;
+  defaultSector?: MemorySector;
 }
 
 const VALID_MEMORY_SECTORS: readonly MemorySector[] = [
