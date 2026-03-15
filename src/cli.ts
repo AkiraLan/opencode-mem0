@@ -274,26 +274,36 @@ function addPluginToConfig(configPath: string): boolean {
 }
 
 function createNewConfig(): boolean {
-  const configPath = join(OPENCODE_CONFIG_DIR, "opencode.jsonc");
-  mkdirSync(OPENCODE_CONFIG_DIR, { recursive: true });
-  
-  const config = `{
+  try {
+    const configPath = join(OPENCODE_CONFIG_DIR, "opencode.jsonc");
+    mkdirSync(OPENCODE_CONFIG_DIR, { recursive: true });
+
+    const config = `{
   "plugin": ["${PLUGIN_ENTRY}"]
 }
 `;
-  
-  writeFileSync(configPath, config);
-  console.log(`✓ Created ${configPath}`);
-  return true;
+
+    writeFileSync(configPath, config);
+    console.log(`✓ Created ${configPath}`);
+    return true;
+  } catch (err) {
+    console.error("✗ Failed to create OpenCode config:", err);
+    return false;
+  }
 }
 
 function createCommand(): boolean {
-  mkdirSync(OPENCODE_COMMAND_DIR, { recursive: true });
-  const commandPath = join(OPENCODE_COMMAND_DIR, "openmemory-init.md");
+  try {
+    mkdirSync(OPENCODE_COMMAND_DIR, { recursive: true });
+    const commandPath = join(OPENCODE_COMMAND_DIR, "openmemory-init.md");
 
-  writeFileSync(commandPath, OPENMEMORY_INIT_COMMAND);
-  console.log(`✓ Created /openmemory-init command`);
-  return true;
+    writeFileSync(commandPath, OPENMEMORY_INIT_COMMAND);
+    console.log(`✓ Created /openmemory-init command`);
+    return true;
+  } catch (err) {
+    console.error("✗ Failed to create /openmemory-init command:", err);
+    return false;
+  }
 }
 
 function isOhMyOpencodeInstalled(): boolean {
@@ -348,16 +358,17 @@ function disableAutoCompactHook(): boolean {
 }
 
 function createOpenMemoryConfig(): boolean {
-  const configPath = join(OPENCODE_CONFIG_DIR, "openmemory.jsonc");
-  
-  if (existsSync(configPath)) {
-    console.log("✓ OpenMemory config already exists");
-    return true;
-  }
+  try {
+    const configPath = join(OPENCODE_CONFIG_DIR, "openmemory.jsonc");
 
-  mkdirSync(OPENCODE_CONFIG_DIR, { recursive: true });
-  
-  const config = `{
+    if (existsSync(configPath)) {
+      console.log("✓ OpenMemory config already exists");
+      return true;
+    }
+
+    mkdirSync(OPENCODE_CONFIG_DIR, { recursive: true });
+
+    const config = `{
   // Required if OPENMEMORY_API_KEY is not set in the environment.
   // "apiKey": "m0-your-api-key",
 
@@ -402,10 +413,14 @@ function createOpenMemoryConfig(): boolean {
   "defaultSector": "semantic"
 }
 `;
-  
-  writeFileSync(configPath, config);
-  console.log(`✓ Created ${configPath}`);
-  return true;
+
+    writeFileSync(configPath, config);
+    console.log(`✓ Created ${configPath}`);
+    return true;
+  } catch (err) {
+    console.error("✗ Failed to create OpenMemory config:", err);
+    return false;
+  }
 }
 
 interface InstallOptions {
@@ -417,6 +432,7 @@ async function install(options: InstallOptions): Promise<number> {
   console.log("\n🧠 opencode-openmemory installer\n");
 
   const rl = options.tui ? createReadline() : null;
+  let hasErrors = false;
 
   // Step 1: Register plugin in config
   console.log("Step 1: Register plugin in OpenCode config");
@@ -428,10 +444,10 @@ async function install(options: InstallOptions): Promise<number> {
       if (!shouldModify) {
         console.log("Skipped.");
       } else {
-        addPluginToConfig(configPath);
+        hasErrors = !addPluginToConfig(configPath) || hasErrors;
       }
     } else {
-      addPluginToConfig(configPath);
+      hasErrors = !addPluginToConfig(configPath) || hasErrors;
     }
   } else {
     if (options.tui) {
@@ -439,10 +455,10 @@ async function install(options: InstallOptions): Promise<number> {
       if (!shouldCreate) {
         console.log("Skipped.");
       } else {
-        createNewConfig();
+        hasErrors = !createNewConfig() || hasErrors;
       }
     } else {
-      createNewConfig();
+      hasErrors = !createNewConfig() || hasErrors;
     }
   }
 
@@ -453,10 +469,10 @@ async function install(options: InstallOptions): Promise<number> {
     if (!shouldCreate) {
       console.log("Skipped.");
     } else {
-      createCommand();
+      hasErrors = !createCommand() || hasErrors;
     }
   } else {
-    createCommand();
+    hasErrors = !createCommand() || hasErrors;
   }
 
   // Step 3: Create OpenMemory config
@@ -466,10 +482,10 @@ async function install(options: InstallOptions): Promise<number> {
     if (!shouldCreate) {
       console.log("Skipped.");
     } else {
-      createOpenMemoryConfig();
+      hasErrors = !createOpenMemoryConfig() || hasErrors;
     }
   } else {
-    createOpenMemoryConfig();
+    hasErrors = !createOpenMemoryConfig() || hasErrors;
   }
 
   // Step 4: Configure Oh My OpenCode (if installed)
@@ -493,10 +509,10 @@ async function install(options: InstallOptions): Promise<number> {
         if (!shouldDisable) {
           console.log("Skipped.");
         } else {
-          disableAutoCompactHook();
+          hasErrors = !disableAutoCompactHook() || hasErrors;
         }
       } else if (options.disableAutoCompact) {
-        disableAutoCompactHook();
+        hasErrors = !disableAutoCompactHook() || hasErrors;
       } else {
         console.log("Skipped. Use --disable-context-recovery to disable the hook in non-interactive mode.");
       }
@@ -513,10 +529,14 @@ async function install(options: InstallOptions): Promise<number> {
   console.log("3. Reference docs:");
   console.log("   https://docs.mem0.ai/api-reference");
   console.log("\n" + "─".repeat(50));
-  console.log("\n✓ Setup complete! Restart OpenCode to activate.\n");
+  if (hasErrors) {
+    console.log("\n✗ Setup finished with errors. Fix the failed steps above and rerun the installer.\n");
+  } else {
+    console.log("\n✓ Setup complete! Restart OpenCode to activate.\n");
+  }
 
   if (rl) rl.close();
-  return 0;
+  return hasErrors ? 1 : 0;
 }
 
 function printHelp(): void {
