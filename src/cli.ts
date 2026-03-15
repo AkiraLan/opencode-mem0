@@ -503,9 +503,9 @@ Commands:
     --disable-context-recovery   Disable Oh My OpenCode's context-window-limit-recovery hook (use with --no-tui)
 
 Examples:
-  bunx opencode-openmemory@latest install
-  bunx opencode-openmemory@latest install --no-tui
-  bunx opencode-openmemory@latest install --no-tui --disable-context-recovery
+  bun run build && node ./dist/cli.js install
+  bun run build && node ./dist/cli.js install --no-tui
+  bun run build && node ./dist/cli.js install --no-tui --disable-context-recovery
 `);
 }
 

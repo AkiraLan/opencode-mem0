@@ -1,6 +1,5 @@
 # opencode-openmemory
 
-[![npm version](https://badge.fury.io/js/@happycastle%2Fopencode-openmemory.svg)](https://www.npmjs.com/package/@happycastle%2Fopencode-openmemory)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **Persistent memory for OpenCode agents** using [Mem0 Platform API](https://docs.mem0.ai/api-reference).
@@ -39,16 +38,36 @@ A fork of [opencode-supermemory](https://github.com/supermemoryai/opencode-super
 
 ### 1. Install the plugin
 
+This project is not currently available on npm, so install it from source.
+
+From a local checkout of this repository, install dependencies and build:
+
 ```bash
-bunx @eddy.soungmin/opencode-openmemory@latest install
+bun install
+bun run build
 ```
 
-Or manually add to `~/.config/opencode/opencode.jsonc`:
+You can then use it in either of these ways:
+
+Run OpenCode with the built plugin directly:
+
+```bash
+opencode --plugin /absolute/path/to/opencode-openmemory/dist/index.js
+```
+
+Or register the built file in `~/.config/opencode/opencode.jsonc` for persistent use:
 
 ```jsonc
 {
-  "plugin": ["@happycastle/opencode-openmemory@latest"]
+  "plugin": ["/absolute/path/to/opencode-openmemory/dist/index.js"]
 }
+```
+
+If you want the guided installer in this repository, run:
+
+```bash
+bun run build
+node ./dist/cli.js install
 ```
 
 ### 2. Create a Mem0 API key
@@ -220,7 +239,7 @@ bun run build && opencode --plugin ./dist/index.js
 
 ## Comparison with opencode-supermemory
 
-| Feature | opencode-supermemory | @eddy.soungmin/opencode-openmemory |
+| Feature | opencode-supermemory | opencode-openmemory |
 |---------|---------------------|-------------------------------------|
 | Backend | Supermemory Cloud | Mem0 Platform API |
 | Data Location | Cloud | Mem0 workspace |
