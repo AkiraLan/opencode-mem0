@@ -215,29 +215,6 @@ Add to `~/.config/opencode/oh-my-opencode.json`:
 }
 ```
 
-## Development
-
-```bash
-# Clone
-git clone https://github.com/happycastle114/opencode-mem0.git
-cd opencode-mem0
-
-# Install dependencies
-bun install
-
-# Type check
-bun run typecheck
-
-# Build
-bun run build
-
-# Development (watch mode)
-bun run dev
-
-# Local testing with OpenCode
-bun run build && opencode --plugin ./dist/index.js
-```
-
 ## Comparison with opencode-supermemory
 
 | Feature | opencode-supermemory | opencode-mem0 |
@@ -265,7 +242,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 - Based on [opencode-supermemory](https://github.com/supermemoryai/opencode-supermemory) by Supermemory
 - Uses [Mem0](https://mem0.ai/) Platform API
-- Developed by [@happycastle114](https://github.com/happycastle114)
+- Developed by [@AkiraLan](https://github.com/AkiraLan)
 
 ## Special Thanks
 
