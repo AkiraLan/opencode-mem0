@@ -81,6 +81,12 @@ function isRedirectStatus(status: number): boolean {
   return status >= 300 && status < 400;
 }
 
+function isSafeRedirectTarget(fromUrl: string, toUrl: string): boolean {
+  const from = new URL(fromUrl);
+  const to = new URL(toUrl);
+  return from.origin === to.origin;
+}
+
 function extractMemoryRecords(data: unknown): Mem0MemoryRecord[] {
   if (Array.isArray(data)) {
     return data as Mem0MemoryRecord[];
@@ -127,22 +133,38 @@ export class Mem0RESTClient implements IMemoryBackendClient {
       headers.Authorization = `Token ${this.apiKey}`;
     }
 
-    const response = await withTimeout(
-      fetch(`${this.baseUrl}${path}`, { ...options, headers, redirect: "manual" }),
-      TIMEOUT_MS
-    );
+    const requestUrl = path.startsWith("http://") || path.startsWith("https://")
+      ? path
+      : `${this.baseUrl}${path}`;
+
+    const doFetch = (url: string) =>
+      withTimeout(
+        fetch(url, { ...options, headers, redirect: "manual" }),
+        TIMEOUT_MS
+      );
+
+    let response = await doFetch(requestUrl);
 
     if (isRedirectStatus(response.status)) {
       const location = response.headers.get("location");
-      throw new Error(
-        [
-          `Unexpected redirect from ${this.baseUrl}${path}`,
-          location ? `to ${location}` : undefined,
-          "This usually means OPENMEMORY_API_URL points to a non-API host or the upstream is redirecting POST requests.",
-        ]
-          .filter(Boolean)
-          .join(" ")
-      );
+      if (location) {
+        const redirectUrl = new URL(location, requestUrl).toString();
+
+        if (isSafeRedirectTarget(requestUrl, redirectUrl)) {
+          log("Mem0.fetch: following redirect", { from: requestUrl, to: redirectUrl, status: response.status });
+          response = await doFetch(redirectUrl);
+        } else {
+          throw new Error(
+            [
+              `Unexpected cross-origin redirect from ${requestUrl}`,
+              `to ${redirectUrl}.`,
+              "This usually means OPENMEMORY_API_URL points to a non-API host or proxy.",
+            ].join(" ")
+          );
+        }
+      } else {
+        throw new Error(`Unexpected redirect from ${requestUrl} without Location header`);
+      }
     }
 
     return response;
