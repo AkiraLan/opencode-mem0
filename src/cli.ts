@@ -1,14 +1,20 @@
 #!/usr/bin/env node
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { homedir } from "node:os";
+import { fileURLToPath } from "node:url";
 import * as readline from "node:readline";
 import { stripJsoncComments } from "./services/jsonc.js";
 
 const OPENCODE_CONFIG_DIR = join(homedir(), ".config", "opencode");
 const OPENCODE_COMMAND_DIR = join(OPENCODE_CONFIG_DIR, "command");
 const OH_MY_OPENCODE_CONFIG = join(OPENCODE_CONFIG_DIR, "oh-my-opencode.json");
-const PLUGIN_NAME = "opencode-openmemory@latest";
+const CLI_DIR = dirname(fileURLToPath(import.meta.url));
+const PLUGIN_ENTRY = join(CLI_DIR, "index.js");
+const LEGACY_PLUGIN_ENTRIES = [
+  "opencode-openmemory@latest",
+  "@happycastle/opencode-openmemory@latest",
+];
 
 const OPENMEMORY_INIT_COMMAND = `---
 description: Initialize OpenMemory with comprehensive codebase knowledge
@@ -204,8 +210,8 @@ function findOpencodeConfig(): string | null {
 function addPluginToConfig(configPath: string): boolean {
   try {
     const content = readFileSync(configPath, "utf-8");
-    
-    if (content.includes("opencode-openmemory")) {
+
+    if (content.includes(PLUGIN_ENTRY)) {
       console.log("✓ Plugin already registered in config");
       return true;
     }
@@ -220,27 +226,38 @@ function addPluginToConfig(configPath: string): boolean {
       return false;
     }
 
-    const plugins = (config.plugin as string[]) || [];
-    plugins.push(PLUGIN_NAME);
-    config.plugin = plugins;
+    const plugins = Array.isArray(config.plugin)
+      ? (config.plugin as unknown[]).filter((plugin): plugin is string => typeof plugin === "string")
+      : [];
+    const hasLegacyEntry = plugins.some((plugin) => LEGACY_PLUGIN_ENTRIES.includes(plugin));
+    config.plugin = [
+      ...plugins.filter((plugin) => !LEGACY_PLUGIN_ENTRIES.includes(plugin)),
+      PLUGIN_ENTRY,
+    ];
 
     if (configPath.endsWith(".jsonc")) {
-      if (content.includes('"plugin"')) {
+      if (hasLegacyEntry) {
+        let newContent = content;
+        for (const legacyEntry of LEGACY_PLUGIN_ENTRIES) {
+          newContent = newContent.replaceAll(`"${legacyEntry}"`, `"${PLUGIN_ENTRY}"`);
+        }
+        writeFileSync(configPath, newContent);
+      } else if (content.includes('"plugin"')) {
         const newContent = content.replace(
           /("plugin"\s*:\s*\[)([^\]]*?)(\])/,
           (_match, start, middle, end) => {
             const trimmed = middle.trim();
             if (trimmed === "") {
-              return `${start}\n    "${PLUGIN_NAME}"\n  ${end}`;
+              return `${start}\n    "${PLUGIN_ENTRY}"\n  ${end}`;
             }
-            return `${start}${middle.trimEnd()},\n    "${PLUGIN_NAME}"\n  ${end}`;
+            return `${start}${middle.trimEnd()},\n    "${PLUGIN_ENTRY}"\n  ${end}`;
           }
         );
         writeFileSync(configPath, newContent);
       } else {
         const newContent = content.replace(
           /^(\s*\{)/,
-          `$1\n  "plugin": ["${PLUGIN_NAME}"],`
+          `$1\n  "plugin": ["${PLUGIN_ENTRY}"],`
         );
         writeFileSync(configPath, newContent);
       }
@@ -248,7 +265,7 @@ function addPluginToConfig(configPath: string): boolean {
       writeFileSync(configPath, JSON.stringify(config, null, 2));
     }
 
-    console.log(`✓ Added plugin to ${configPath}`);
+    console.log(`✓ Registered plugin at ${PLUGIN_ENTRY} in ${configPath}`);
     return true;
   } catch (err) {
     console.error("✗ Failed to update config:", err);
@@ -261,7 +278,7 @@ function createNewConfig(): boolean {
   mkdirSync(OPENCODE_CONFIG_DIR, { recursive: true });
   
   const config = `{
-  "plugin": ["${PLUGIN_NAME}"]
+  "plugin": ["${PLUGIN_ENTRY}"]
 }
 `;
   
@@ -280,9 +297,11 @@ function createCommand(): boolean {
 }
 
 function isOhMyOpencodeInstalled(): boolean {
+  if (existsSync(OH_MY_OPENCODE_CONFIG)) return true;
+
   const configPath = findOpencodeConfig();
   if (!configPath) return false;
-  
+
   try {
     const content = readFileSync(configPath, "utf-8");
     return content.includes("oh-my-opencode");
@@ -454,9 +473,16 @@ async function install(options: InstallOptions): Promise<number> {
   }
 
   // Step 4: Configure Oh My OpenCode (if installed)
-  if (isOhMyOpencodeInstalled()) {
+  const shouldConfigureOhMyOpencode =
+    isOhMyOpencodeInstalled() || options.disableAutoCompact;
+
+  if (shouldConfigureOhMyOpencode) {
     console.log("\nStep 4: Configure Oh My OpenCode");
-    console.log("Detected Oh My OpenCode plugin.");
+    if (isOhMyOpencodeInstalled()) {
+      console.log("Detected Oh My OpenCode plugin.");
+    } else {
+      console.log("Applying requested Oh My OpenCode hook configuration.");
+    }
     console.log("OpenMemory handles context compaction, so the built-in context-window-limit-recovery hook should be disabled.");
     
     if (isAutoCompactAlreadyDisabled()) {
