@@ -148,12 +148,18 @@ On the first message of each session, the plugin automatically injects:
 
 ### Explicit Memory Saving
 
-Use trigger phrases to save memories:
+The plugin monitors conversations for trigger phrases and automatically saves relevant knowledge.
+
+**Built-in triggers:** `remember this`, `save this`, `keep in mind`, `note that`, `don't forget`
+
+**Custom patterns:** Add your own regex patterns in `mem0.jsonc` via the `keywordPatterns` option. Custom patterns work alongside built-in triggers.
+
+**Examples:**
 
 ```
 "Remember that we use Prettier with single quotes"
 "Save this: always run tests before committing"
-"Keep in mind that the auth service is in /src/lib/auth"
+"Note that API rate limit is 100 requests/minute"
 ```
 
 ### Tool Commands
