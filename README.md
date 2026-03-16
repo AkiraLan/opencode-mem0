@@ -39,36 +39,41 @@ which was originally adapted from [opencode-supermemory](https://github.com/supe
 
 ### 1. Install the plugin
 
-This project is not currently available on npm, so install it from source.
-
-From a local checkout of this repository, install dependencies and build:
+This project is not currently available on npm, so install it from source:
 
 ```bash
+# Clone the repository
+git clone https://github.com/AkiraLan/opencode-mem0.git
+cd opencode-mem0
+
+# Install dependencies and build
 bun install
 bun run build
+
+# Run the guided installer (recommended)
+node ./dist/cli.js install
 ```
 
-You can then use it in either of these ways:
+The installer will:
+- Register the plugin in `~/.config/opencode/opencode.jsonc`
+- Create the `/mem0-init` slash command
+- Generate a configuration file at `~/.config/opencode/mem0.jsonc`
+- Configure Oh My OpenCode compatibility (if detected)
 
-Run OpenCode with the built plugin directly:
+#### Alternative: Manual Installation
 
+If you prefer manual setup, you can register the plugin directly:
+
+**Option A** Run OpenCode with the plugin directly:
 ```bash
 opencode --plugin /absolute/path/to/opencode-mem0/dist/index.js
 ```
 
-Or register the built file in `~/.config/opencode/opencode.jsonc` for persistent use:
-
+**Option B** Add to `~/.config/opencode/opencode.jsonc` for persistent use:
 ```jsonc
 {
   "plugin": ["/absolute/path/to/opencode-mem0/dist/index.js"]
 }
-```
-
-If you want the guided installer in this repository, run:
-
-```bash
-bun run build
-node ./dist/cli.js install
 ```
 
 ### 2. Create a Mem0 API key
