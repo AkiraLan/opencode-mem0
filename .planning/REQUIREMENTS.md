@@ -94,6 +94,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 - Mapped to phases: 13
 - Unmapped: 0 ✓
 
+**Phase Breakdown:**
+- Phase 1 (Critical Reliability Fixes): 8 requirements (REL-01–05, SCOPE-01–03)
+- Phase 2 (Observability Foundation): 5 requirements (OBS-01–05)
+
 ---
 
 ## Requirement Quality Notes
