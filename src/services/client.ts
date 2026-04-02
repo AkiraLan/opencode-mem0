@@ -239,7 +239,7 @@ export class Mem0RESTClient implements IMemoryBackendClient {
     log("Mem0.searchMemories", { query: query.slice(0, 50), scope });
 
     try {
-      const response = await this.fetch("/v2/memories/search", {
+      const response = await this.fetch("/v2/memories/search/", {
         method: "POST",
         body: JSON.stringify(
           this.withOrgProject({
@@ -280,7 +280,7 @@ export class Mem0RESTClient implements IMemoryBackendClient {
     log("Mem0.addMemory", { contentLength: content.length, scope });
 
     try {
-      const response = await this.fetch("/v1/memories", {
+      const response = await this.fetch("/v1/memories/", {
         method: "POST",
         body: JSON.stringify(
           this.withOrgProject({
@@ -346,7 +346,7 @@ export class Mem0RESTClient implements IMemoryBackendClient {
       const pageSize = options?.limit ?? CONFIG.maxProjectMemories;
       const page = options?.offset ? Math.floor(options.offset / pageSize) + 1 : 1;
 
-      const response = await this.fetch("/v2/memories", {
+      const response = await this.fetch("/v2/memories/", {
         method: "POST",
         body: JSON.stringify(
           this.withOrgProject({

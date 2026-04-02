@@ -10,13 +10,22 @@ import { createCompactionHook, type CompactionContext, generatePartId } from "./
 
 import { isConfigured, CONFIG } from "./config.js";
 import { log } from "./services/logger.js";
-import type { MemoryScopeType, MemoryType, MemorySector } from "./types/index.js";
+import type { MemoryScopeContext, MemoryType, MemorySector } from "./types/index.js";
 
 const CODE_BLOCK_PATTERN = /```[\s\S]*?```/g;
 const INLINE_CODE_PATTERN = /`[^`]+`/g;
 
 const DEFAULT_MEMORY_KEYWORD_PATTERN =
-  /\b(remember|memorize|save\s+this|note\s+this|keep\s+in\s+mind|don'?t\s+forget|learn\s+this|store\s+this|record\s+this|make\s+a\s+note|take\s+note|jot\s+down|commit\s+to\s+memory|remember\s+that|never\s+forget|always\s+remember)\b/i;
+  /\b(remember|memorize|save\s+this|note\s+this|keep\s+in\s+mind|don'?t\s+forget|learn\s+this|store\s+this|record\s+this|make\s+a\s+note|take\s+note|jot\s+down|commit\s+to\s+memory|remember\s+that|never\s+forget|always\s+remember|remember:)\b/i;
+
+const EXPLICIT_MEMORY_CAPTURE_PATTERNS: readonly RegExp[] = [
+  /^\s*["'“”]?\s*(?:please\s+)?(?:remember(?:\s+this)?|memorize(?:\s+this)?|save\s+this|note\s+this|store\s+this|record\s+this|jot\s+down|take\s+note)\s*(?::|-)\s*([\s\S]+?)\s*["'“”]?\s*$/i,
+  /^\s*["'“”]?\s*(?:please\s+)?(?:remember(?:\s+that)?|don'?t\s+forget(?:\s+that)?|keep\s+in\s+mind(?:\s+that)?)\s+([\s\S]+?)\s*["'“”]?\s*$/i,
+  /\bremember:\s*([\s\S]+?)(?:\n|$)/i,
+];
+
+const USER_SCOPE_PREFERENCE_PATTERN =
+  /\b(i\s+prefer|my\s+preference|i\s+like|my\s+workflow|always\s+use|prefer\s+that\s+you|please\s+always)\b/i;
 
 const MEMORY_NUDGE_MESSAGE = `[MEMORY TRIGGER DETECTED]
 The user wants you to remember something. You MUST use the \`mem0\` tool with \`mode: "add"\` to save this information.
@@ -26,7 +35,48 @@ Extract the key information the user wants remembered and save it as a concise, 
 - Use \`scope: "user"\` for cross-project preferences (e.g., "prefers concise responses")
 - Choose an appropriate \`type\`: "preference", "project-config", "learned-pattern", etc.
 
-DO NOT skip this step. The user explicitly asked you to remember.`;
+DO NOT skip this step. The user explicitly asked you to remember.
+- After calling the tool, tell the user the result explicitly.
+- Only say the memory was saved if the tool returns \`success: true\`.
+- If the tool returns \`success: false\`, report the failure clearly and do not imply it was remembered.`;
+
+function formatMemoryScopeLabel(scope?: "user" | "project"): string {
+  return scope === "user" ? "user" : "project";
+}
+
+function createMemorySuccessMessage(args: {
+  scope?: "user" | "project";
+  type?: MemoryType;
+  sector?: MemorySector;
+}): string {
+  const details = [
+    args.type ? `type: ${args.type}` : null,
+    args.sector ? `sector: ${args.sector}` : null,
+  ].filter((detail): detail is string => detail !== null);
+
+  return details.length > 0
+    ? `Memory saved to ${formatMemoryScopeLabel(args.scope)} scope (${details.join(", ")}).`
+    : `Memory saved to ${formatMemoryScopeLabel(args.scope)} scope.`;
+}
+
+function createMemoryFailureMessage(error: string): string {
+  return `Failed to save memory: ${error}`;
+}
+
+function createAutomaticMemoryFailureNotice(error: string): string {
+  return `[MEMORY SAVE FAILED] ${createMemoryFailureMessage(error)}`;
+}
+
+function inferExplicitMemoryScope(
+  content: string,
+  scopes: ReturnType<typeof getScopes>
+): { targetScope: MemoryScopeContext; scopeLabel: "user" | "project" } {
+  if (USER_SCOPE_PREFERENCE_PATTERN.test(content)) {
+    return { targetScope: scopes.user, scopeLabel: "user" };
+  }
+
+  return { targetScope: scopes.project, scopeLabel: "project" };
+}
 
 function getMemoryKeywordPattern(): RegExp {
   const customPatterns = CONFIG.keywordPatterns
@@ -71,6 +121,36 @@ function removeCodeBlocks(text: string): string {
 function detectMemoryKeyword(text: string): boolean {
   const textWithoutCode = removeCodeBlocks(text);
   return getMemoryKeywordPattern().test(textWithoutCode);
+}
+
+function normalizeQuotedMessage(text: string): string {
+  const trimmed = text.trim();
+  if (trimmed.length < 2) {
+    return trimmed;
+  }
+
+  const first = trimmed[0];
+  const last = trimmed[trimmed.length - 1];
+  const isMatchingQuotePair =
+    (first === '"' && last === '"') ||
+    (first === "'" && last === "'") ||
+    (first === "“" && last === "”");
+
+  return isMatchingQuotePair ? trimmed.slice(1, -1).trim() : trimmed;
+}
+
+function extractExplicitMemoryContent(text: string): string | null {
+  const normalized = normalizeQuotedMessage(removeCodeBlocks(text));
+
+  for (const pattern of EXPLICIT_MEMORY_CAPTURE_PATTERNS) {
+    const match = normalized.match(pattern);
+    const extracted = match?.[1]?.trim();
+    if (extracted) {
+      return extracted;
+    }
+  }
+
+  return null;
 }
 
 type ModelLimitMap = Map<string, number>;
@@ -135,6 +215,7 @@ export const OpenMemoryPlugin: Plugin = async (ctx: PluginInput) => {
   const scopes = getScopes(directory);
   const tags = getTags(directory);
   const injectedSessions = new Set<string>();
+  const autoPersistedMessageIDs = new Set<string>();
   const modelLimits = new Map<string, number>();
   log("Plugin init", { directory, scopes, configured: isConfigured() });
 
@@ -183,15 +264,82 @@ export const OpenMemoryPlugin: Plugin = async (ctx: PluginInput) => {
 
         if (detectMemoryKeyword(userMessage)) {
           log("chat.message: memory keyword detected");
-          const nudgePart: Part = {
-            id: generatePartId(),
-            sessionID: input.sessionID,
-            messageID: output.message.id,
-            type: "text",
-            text: getMemoryNudgeMessage(),
-            synthetic: true,
-          };
-          output.parts.push(nudgePart);
+
+          const explicitMemoryContent = extractExplicitMemoryContent(userMessage);
+          let autoPersistSucceeded = false;
+          let autoPersistFailureMessage: string | null = null;
+
+          if (explicitMemoryContent && !autoPersistedMessageIDs.has(output.message.id)) {
+            const sanitizedContent = stripPrivateContent(explicitMemoryContent);
+            if (isFullyPrivate(explicitMemoryContent)) {
+              autoPersistFailureMessage = "Automatic memory capture skipped: content was fully redacted for privacy.";
+              log("chat.message: auto memory persist skipped (fully private content)", {
+                messageID: output.message.id,
+              });
+            } else {
+              const { targetScope, scopeLabel } = inferExplicitMemoryScope(sanitizedContent, scopes);
+              const autoPersistResult = await openMemoryClient.addMemory(
+                sanitizedContent,
+                targetScope,
+                {
+                  type: "learned-pattern",
+                  tags: ["semantic"],
+                  metadata: { trigger: "explicit_capture" }
+                }
+              );
+
+              if (autoPersistResult.success) {
+                autoPersistSucceeded = true;
+                autoPersistedMessageIDs.add(output.message.id);
+                log("chat.message: auto memory persist succeeded", {
+                  messageID: output.message.id,
+                  id: autoPersistResult.id,
+                  scope: scopeLabel,
+                  sector: autoPersistResult.sector,
+                });
+
+                const successMessage = `[MEMORY SAVED] I've automatically recorded this: "${sanitizedContent.slice(0, 50)}${sanitizedContent.length > 50 ? "..." : ""}" to your ${scopeLabel} memory.`;
+                const successPart: Part = {
+                  id: generatePartId(),
+                  sessionID: input.sessionID,
+                  messageID: output.message.id,
+                  type: "text",
+                  text: successMessage,
+                  synthetic: true,
+                };
+                output.parts.push(successPart);
+              } else {
+                autoPersistFailureMessage = createMemoryFailureMessage(
+                  autoPersistResult.error || "Failed to add memory"
+                );
+                log("chat.message: auto memory persist failed", {
+                  messageID: output.message.id,
+                  error: autoPersistResult.error || "Unknown error",
+                });
+              }
+            }
+          }
+
+          if (!autoPersistSucceeded) {
+            const fallbackPart: Part = autoPersistFailureMessage
+              ? {
+                  id: generatePartId(),
+                  sessionID: input.sessionID,
+                  messageID: output.message.id,
+                  type: "text",
+                  text: createAutomaticMemoryFailureNotice(autoPersistFailureMessage),
+                  synthetic: true,
+                }
+              : {
+                  id: generatePartId(),
+                  sessionID: input.sessionID,
+                  messageID: output.message.id,
+                  type: "text",
+                  text: getMemoryNudgeMessage(),
+                  synthetic: true,
+                };
+            output.parts.push(fallbackPart);
+          }
         }
 
         const isFirstMessage = !injectedSessions.has(input.sessionID);
@@ -366,17 +514,21 @@ export const OpenMemoryPlugin: Plugin = async (ctx: PluginInput) => {
 
               case "add": {
                 if (!args.content) {
+                  const error = "content parameter is required for add mode";
                   return JSON.stringify({
                     success: false,
-                    error: "content parameter is required for add mode",
+                    error,
+                    message: createMemoryFailureMessage(error),
                   });
                 }
 
                 const sanitizedContent = stripPrivateContent(args.content);
                 if (isFullyPrivate(args.content)) {
+                  const error = "Cannot store fully private content";
                   return JSON.stringify({
                     success: false,
-                    error: "Cannot store fully private content",
+                    error,
+                    message: createMemoryFailureMessage(error),
                   });
                 }
 
@@ -392,17 +544,25 @@ export const OpenMemoryPlugin: Plugin = async (ctx: PluginInput) => {
                 );
 
                 if (!result.success) {
+                  const error = result.error || "Failed to add memory";
                   return JSON.stringify({
                     success: false,
-                    error: result.error || "Failed to add memory",
+                    error,
+                    message: createMemoryFailureMessage(error),
                   });
                 }
 
+                const message = createMemorySuccessMessage({
+                  scope: args.scope,
+                  type: args.type,
+                  sector: result.sector,
+                });
+
                 return JSON.stringify({
                   success: true,
-                  message: `Memory added to ${args.scope || "project"} scope`,
+                  message,
                   id: result.id,
-                  scope: args.scope || "project",
+                  scope: formatMemoryScopeLabel(args.scope),
                   sector: result.sector,
                   type: args.type,
                 });
