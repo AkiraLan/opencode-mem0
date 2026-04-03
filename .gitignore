@@ -32,3 +32,9 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # Finder (MacOS) folder config
 .DS_Store
+
+# local planning and accidental artifacts
+.planning/
+package_json.json
+src_index.ts
+src_services_compaction.ts
