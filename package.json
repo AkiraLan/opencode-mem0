@@ -1,5 +1,5 @@
 {
-  "name": "@happycastle/opencode-mem0",
+  "name": "opencode-mem0",
   "version": "0.0.3",
   "description": "OpenCode plugin that gives coding agents persistent memory using Mem0",
   "type": "module",

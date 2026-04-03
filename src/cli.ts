@@ -12,7 +12,7 @@ const CLI_DIR = dirname(fileURLToPath(import.meta.url));
 const PLUGIN_ENTRY = join(CLI_DIR, "index.js");
 const LEGACY_PLUGIN_ENTRIES = [
   "opencode-mem0@latest",
-  "@happycastle/opencode-mem0@latest",
+  "opencode-mem0@latest",
 ];
 
 const MEM0_INIT_COMMAND = `# Initializing Mem0
